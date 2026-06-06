@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cd-ripper"
+version = "0.1.0"
+description = "A CLI tool to rip audio CDs and organize tracks into folders."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "click>=8.0",
+    "mutagen>=1.46",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+cdripper = "cd_ripper.cli:main"
