@@ -6,3 +6,8 @@ dist/
 .venv/
 .env
 .pytest_cache/
+
+# ignore editor and output folders
+.github/
+.vscode/
+rips/
