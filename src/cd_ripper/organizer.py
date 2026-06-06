@@ -1,3 +1,4 @@
+import re
 import shutil
 from pathlib import Path
 from typing import Optional
@@ -10,6 +11,37 @@ try:
 except Exception:
     acoustid = None
     musicbrainzngs = None
+
+
+def _normalize_track_number(track_number: Optional[str]) -> Optional[str]:
+    if not track_number:
+        return None
+
+    track = str(track_number).split("/")[0].strip()
+    match = re.match(r"^(\d+)", track)
+    if not match:
+        return None
+
+    return match.group(1).zfill(2)
+
+
+def _sanitize_title(title: str) -> str:
+    title = title.strip()
+    title = re.sub(r"[\\/*:?\"<>|]+", "", title)
+    title = re.sub(r"\s+", " ", title)
+    return title
+
+
+def _build_target_filename(title: Optional[str], track_number: Optional[str], original_name: str) -> str:
+    ext = Path(original_name).suffix
+    if title:
+        title = _sanitize_title(title)
+        if track_number:
+            return f"{track_number} - {title}{ext}"
+        return f"{title}{ext}"
+    if track_number:
+        return f"{track_number} - {Path(original_name).stem}{ext}"
+    return original_name
 
 
 def organize_rips(source_dir: Path, auto_release: bool = False, acoustid_key: Optional[str] = None):
@@ -102,6 +134,7 @@ def organize_rips(source_dir: Path, auto_release: bool = False, acoustid_key: Op
 
                 for f, recid in file_recs.items():
                     title, track_no = track_map.get(recid, (None, None))
+                    normalized_track = _normalize_track_number(track_no)
                     suffix = f.suffix.lower()
                     try:
                         if suffix == '.wav':
@@ -139,8 +172,9 @@ def organize_rips(source_dir: Path, auto_release: bool = False, acoustid_key: Op
                     safe_album = album_title.replace('/','-')
                     target_dir = destination_root / safe_artist / safe_album
                     target_dir.mkdir(parents=True, exist_ok=True)
+                    target_name = _build_target_filename(title, normalized_track, f.name)
                     try:
-                        shutil.move(str(f), str(target_dir / f.name))
+                        shutil.move(str(f), str(target_dir / target_name))
                     except Exception:
                         continue
             except Exception:
@@ -159,10 +193,16 @@ def organize_rips(source_dir: Path, auto_release: bool = False, acoustid_key: Op
 
             artist = audio.get("artist", ["Unknown Artist"])[0]
             album = audio.get("album", ["Unknown Album"])[0]
+            title = audio.get("title", [None])[0]
+            track_no = audio.get("tracknumber", [None])[0]
+            normalized_track = _normalize_track_number(track_no)
+
             artist_dir = destination_root / artist.strip()
             album_dir = artist_dir / album.strip()
             album_dir.mkdir(parents=True, exist_ok=True)
+
+            target_name = _build_target_filename(title, normalized_track, file_path.name)
             try:
-                shutil.move(str(file_path), str(album_dir / file_path.name))
+                shutil.move(str(file_path), str(album_dir / target_name))
             except Exception:
                 continue
